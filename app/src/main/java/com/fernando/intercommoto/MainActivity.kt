@@ -17,7 +17,6 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
-import java.text.Normalizer
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -33,6 +32,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import java.text.Normalizer
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -213,12 +213,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
             override fun onResults(results: Bundle?) {
                 val lista = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                lista?.firstOrNull()?.let { processar(it) }
+                lista?.firstOrNull()?.let { processar(it, true) }
                 reiniciarRecognizer()
             }
             override fun onPartialResults(partialResults: Bundle?) {
                 val lista = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                lista?.firstOrNull()?.let { processar(it) }
+                lista?.firstOrNull()?.let { processar(it, false) }
             }
             override fun onError(error: Int) {
                 log("⚠️ Erro de reconhecimento: $error")
@@ -250,15 +250,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         iniciarReconhecimento()
     }
 
-    private fun processar(fraseOriginal: String) {
+    // isFinal = true quando vem de onResults (frase completa), false quando vem de onPartialResults
+    private fun processar(fraseOriginal: String, isFinal: Boolean) {
         val frase = norm(fraseOriginal)
         log(fraseOriginal)
-        if (!janelaFalaAtiva && frase.contains("aviso")) {
-            abrirJanela()
-        } else if (janelaFalaAtiva && !frase.contains("aviso")) {
-            enviarMensagem(fraseOriginal)
-            janelaRunnable?.let { handler.removeCallbacks(it) }
-            fecharJanela()
+
+        if (!janelaFalaAtiva) {
+            // ainda esperando a palavra-gatilho
+            if (frase.contains("aviso")) {
+                abrirJanela()
+            }
+        } else {
+            // janela já aberta = essa é uma sessão NOVA de reconhecimento,
+            // só captura a mensagem em si (sem o "aviso" misturado)
+            if (isFinal && fraseOriginal.isNotBlank()) {
+                enviarMensagem(fraseOriginal)
+                janelaRunnable?.let { handler.removeCallbacks(it) }
+                fecharJanela()
+            }
         }
     }
 
@@ -274,6 +283,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         log("Janela aberta — fale a mensagem")
         janelaRunnable = Runnable { fecharJanela() }
         handler.postDelayed(janelaRunnable!!, JANELA_MS)
+        // reinicia o reconhecimento numa sessão limpa, só pra capturar a mensagem
+        reiniciarRecognizer()
     }
 
     private fun fecharJanela() {
