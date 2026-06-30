@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="FastBtn">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_columnWeight">1</item>
+        <item name="android:layout_height">90dp</item>
+        <item name="android:layout_margin">4dp</item>
+        <item name="android:backgroundTint">@color/btn_dark</item>
+        <item name="android:textColor">@color/text_light</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+</resources>
